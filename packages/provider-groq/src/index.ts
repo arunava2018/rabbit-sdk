@@ -45,6 +45,7 @@ export class GroqProvider extends Provider {
 
     if (request.stream) {
       async function* processStream() {
+        const accumulatedToolCalls: any[] = [];
         for await (const chunk of response as any) {
           const choice = chunk.choices[0];
           
@@ -54,14 +55,39 @@ export class GroqProvider extends Provider {
           };
 
           if (choice?.delta?.tool_calls) {
-            responseMessage.toolCalls = choice.delta.tool_calls.map((tc: any) => ({
-              id: tc.id || Math.random().toString(36).substring(7),
-              name: tc.function?.name || "",
-              arguments: tc.function?.arguments ? JSON.parse(tc.function.arguments) : {},
-            }));
+            for (const tc of choice.delta.tool_calls) {
+              const index = tc.index !== undefined ? tc.index : accumulatedToolCalls.length;
+              if (!accumulatedToolCalls[index]) {
+                accumulatedToolCalls[index] = {
+                  id: "",
+                  name: "",
+                  arguments: ""
+                };
+              }
+              if (tc.id) accumulatedToolCalls[index].id = tc.id;
+              if (tc.function?.name) accumulatedToolCalls[index].name = tc.function.name;
+              if (tc.function?.arguments) {
+                accumulatedToolCalls[index].arguments += tc.function.arguments;
+              }
+            }
           }
 
           yield { message: responseMessage };
+        }
+
+        if (accumulatedToolCalls.length > 0) {
+          const finalToolCalls = accumulatedToolCalls.map((tc) => ({
+            id: tc.id || Math.random().toString(36).substring(7),
+            name: tc.name,
+            arguments: tc.arguments ? JSON.parse(tc.arguments) : {},
+          }));
+          yield {
+            message: {
+              role: "assistant" as const,
+              content: "",
+              toolCalls: finalToolCalls,
+            }
+          };
         }
       }
       return processStream();

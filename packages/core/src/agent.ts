@@ -60,11 +60,102 @@ export class Agent {
     // 3. Start the execution loop (handle tool calls)
     return this.executionLoop();
   }
-
   /**
    * Main loop that runs the provider and automatically handles tool calls
    */
   private async executionLoop(): Promise<any> {
+    if (this.stream) {
+      const self = this;
+      async function* streamGenerator() {
+        let stepCount = 0;
+        const providers = [self.provider, ...self.fallbackProviders];
+
+        while (true) {
+          if (stepCount >= self.maxSteps) {
+            throw new BudgetExceededError(`Run budget exceeded: The agent reached the maximum allowed steps (${self.maxSteps}).`);
+          }
+          stepCount++;
+
+          const messages = await self.memory.getMessages();
+          
+          let response: ProviderResponse | AsyncIterable<ProviderResponse> | undefined = undefined;
+          let lastError: any = undefined;
+
+          // Call Provider with Fallbacks
+          for (const p of providers) {
+            try {
+              if (providers.length > 1) {
+                console.log(`[Agent Logs] 📡 Calling provider: '${p.name}'...`);
+              }
+              response = await p.generate({
+                messages,
+                model: p.model,
+                tools: Array.from(self.tools.values()),
+                systemPrompt: self.systemPrompt,
+                stream: self.stream,
+              });
+              break; // Success! Break the fallback loop
+            } catch (error: any) {
+              console.warn(`[Agent Logs] ⚠️ Provider '${p.name}' failed:`, error.message);
+              lastError = error;
+              continue; // Try the next fallback provider
+            }
+          }
+
+          if (!response) {
+            throw new ProviderError(`All providers in the fallback chain failed. Last error: ${lastError?.message}`);
+          }
+
+          if (!(Symbol.asyncIterator in response)) {
+            throw new ProviderError(`Provider response was not an async iterable, but stream mode was enabled.`);
+          }
+
+          const stream = response as AsyncIterable<ProviderResponse>;
+          let fullContent = "";
+          let finalToolCalls: ToolCall[] | undefined = undefined;
+
+          for await (const chunk of stream) {
+            if (chunk.message.content) {
+              fullContent += chunk.message.content;
+              yield chunk.message.content;
+            }
+            if (chunk.message.toolCalls && chunk.message.toolCalls.length > 0) {
+              finalToolCalls = chunk.message.toolCalls;
+            }
+          }
+
+          // Run output guardrails on content if any
+          if (fullContent) {
+            for (const guardrail of self.guardrails) {
+              if (guardrail.type !== "output") continue;
+              const isValid = await guardrail.validate(fullContent);
+              if (!isValid) {
+                throw new GuardrailError(guardrail.name, `Guardrail Validation Error: Streamed output rejected by '${guardrail.name}' guardrail.`);
+              }
+            }
+          }
+
+          // Save assistant response to memory
+          const assistantMessage: Message = { role: "assistant", content: fullContent };
+          if (finalToolCalls && finalToolCalls.length > 0) {
+            assistantMessage.toolCalls = finalToolCalls;
+          }
+          await self.memory.addMessage(assistantMessage);
+
+          // If tools were called, execute in parallel and loop back
+          if (finalToolCalls && finalToolCalls.length > 0) {
+            await self.handleToolCalls(finalToolCalls);
+            continue;
+          }
+
+          // No tool calls, we are finished!
+          break;
+        }
+      }
+      return streamGenerator();
+    }
+
+    // Non-streaming execution loop
     let stepCount = 0;
     const providers = [this.provider, ...this.fallbackProviders];
 
@@ -79,7 +170,7 @@ export class Agent {
       let response: ProviderResponse | AsyncIterable<ProviderResponse> | undefined = undefined;
       let lastError: any = undefined;
 
-      // 3. Call Provider with Fallbacks
+      // Call Provider with Fallbacks
       for (const p of providers) {
         try {
           if (providers.length > 1) {
@@ -104,37 +195,9 @@ export class Agent {
         throw new ProviderError(`All providers in the fallback chain failed. Last error: ${lastError?.message}`);
       }
 
-      if (this.stream && Symbol.asyncIterator in response) {
-        const stream = response as AsyncIterable<ProviderResponse>;
-        const memory = this.memory;
-        const guardrails = this.guardrails;
-        
-        async function* processStream() {
-          let fullContent = "";
-          for await (const chunk of stream) {
-            if (chunk.message.content) {
-              fullContent += chunk.message.content;
-              yield chunk.message.content;
-            }
-          }
-
-          for (const guardrail of guardrails) {
-            if(guardrail.type !== "output") continue;
-            const isValid = await guardrail.validate(fullContent);
-            if (!isValid) {
-              throw new GuardrailError(guardrail.name, `Guardrail Validation Error: Streamed output rejected by '${guardrail.name}' guardrail.`);
-            }
-          }
-
-          await memory.addMessage({ role: "assistant", content: fullContent });
-        }
-        
-        return processStream();
-      }
-
       const responseMessage = (response as ProviderResponse).message;
       
-      // 4. Run guardrails on model output
+      // Run guardrails on model output
       if (responseMessage.content) {
         for (const guardrail of this.guardrails) {
           if (guardrail.type !== "output") continue; // SKIP INPUT GUARDRAILS
@@ -146,35 +209,34 @@ export class Agent {
         }
       }
 
-      // 5. Save response to memory
+      // Save response to memory
       await this.memory.addMessage(responseMessage);
 
-      // 6. Check if tools were called
+      // Check if tools were called
       if (responseMessage.toolCalls && responseMessage.toolCalls.length > 0) {
         await this.handleToolCalls(responseMessage.toolCalls);
         // Loop back to send tool results to the model
         continue;
       }
 
-      // 6. Return final text response
+      // Return final text response
       return responseMessage.content;
     }
   }
 
   private async handleToolCalls(toolCalls: ToolCall[]): Promise<void> {
-    for (const toolCall of toolCalls) {
+    const toolPromises = toolCalls.map(async (toolCall) => {
       console.log(`\n[Agent Logs] 🛠️  Model requested tool: '${toolCall.name}' with args:`, toolCall.arguments);
       const tool = this.tools.get(toolCall.name);
       
       if (!tool) {
         console.error(`[Agent Logs] ❌  Error: Tool '${toolCall.name}' not found.`);
-        await this.memory.addMessage({
-          role: "tool",
+        return {
+          role: "tool" as const,
           content: `Error: Tool '${toolCall.name}' not found.`,
           toolCallId: toolCall.id,
           name: toolCall.name,
-        });
-        continue;
+        };
       }
 
       try {
@@ -186,22 +248,27 @@ export class Agent {
         const result = await tool.execute(parsedArgs);
         console.log(`[Agent Logs] ✅ Tool returned:`, result);
         
-        // Save result
-        await this.memory.addMessage({
-          role: "tool",
+        return {
+          role: "tool" as const,
           content: typeof result === "string" ? result : JSON.stringify(result),
           toolCallId: toolCall.id,
           name: toolCall.name,
-        });
+        };
       } catch (error: any) {
         console.error(`[Agent Logs] ❌ Tool execution failed:`, error.message);
-        await this.memory.addMessage({
-          role: "tool",
+        return {
+          role: "tool" as const,
           content: `Error executing tool: ${error.message}`,
           toolCallId: toolCall.id,
           name: toolCall.name,
-        });
+        };
       }
+    });
+
+    const results = await Promise.all(toolPromises);
+
+    for (const resultMessage of results) {
+      await this.memory.addMessage(resultMessage);
     }
   }
 }

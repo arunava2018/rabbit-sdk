@@ -175,4 +175,121 @@ describe("Agent", () => {
 
     await expect(agent.run("Keep looping")).rejects.toThrow(BudgetExceededError);
   });
+
+  it("should execute multiple tool calls in parallel", async () => {
+    const executionOrder: string[] = [];
+    const toolA: Tool = {
+      name: "toolA",
+      description: "tool A",
+      schema: z.object({}),
+      execute: async () => {
+        executionOrder.push("start A");
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        executionOrder.push("end A");
+        return "result A";
+      }
+    };
+    const toolB: Tool = {
+      name: "toolB",
+      description: "tool B",
+      schema: z.object({}),
+      execute: async () => {
+        executionOrder.push("start B");
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        executionOrder.push("end B");
+        return "result B";
+      }
+    };
+
+    primaryProvider.generateMock.mockResolvedValueOnce({
+      message: {
+        role: "assistant",
+        content: "",
+        toolCalls: [
+          { id: "call-a", name: "toolA", arguments: {} },
+          { id: "call-b", name: "toolB", arguments: {} }
+        ]
+      }
+    });
+
+    primaryProvider.generateMock.mockResolvedValueOnce({
+      message: { role: "assistant", content: "Done" }
+    });
+
+    const agent = new Agent({
+      provider: primaryProvider,
+      tools: [toolA, toolB]
+    });
+
+    await agent.run("Run both tools");
+
+    expect(executionOrder[0]).toBe("start A");
+    expect(executionOrder[1]).toBe("start B");
+    expect(executionOrder[2]).toBe("end B");
+    expect(executionOrder[3]).toBe("end A");
+  });
+
+  it("should handle tool execution loop correctly during streaming", async () => {
+    const testTool: Tool = {
+      name: "testTool",
+      description: "test tool",
+      schema: z.object({ value: z.string() }),
+      execute: vi.fn().mockResolvedValue("tool result")
+    };
+
+    const firstStream = {
+      async *[Symbol.asyncIterator]() {
+        yield {
+          message: {
+            role: "assistant" as const,
+            content: "Thought: I need to use the tool.",
+          }
+        };
+        yield {
+          message: {
+            role: "assistant" as const,
+            content: "",
+            toolCalls: [{ id: "call-1", name: "testTool", arguments: { value: "input" } }]
+          }
+        };
+      }
+    };
+
+    const secondStream = {
+      async *[Symbol.asyncIterator]() {
+        yield {
+          message: {
+            role: "assistant" as const,
+            content: "The final answer is here."
+          }
+        };
+      }
+    };
+
+    primaryProvider.generateMock.mockResolvedValueOnce(firstStream);
+    primaryProvider.generateMock.mockResolvedValueOnce(secondStream);
+
+    const agent = new Agent({
+      provider: primaryProvider,
+      tools: [testTool],
+      stream: true
+    });
+
+    const responseStream = await agent.run("Use the tool");
+    
+    const chunks: string[] = [];
+    for await (const chunk of responseStream) {
+      chunks.push(chunk);
+    }
+
+    expect(chunks).toEqual([
+      "Thought: I need to use the tool.",
+      "The final answer is here."
+    ]);
+    expect(testTool.execute).toHaveBeenCalledWith({ value: "input" });
+    expect(primaryProvider.generateMock).toHaveBeenCalledTimes(2);
+
+    const messages = await agent["memory"].getMessages();
+    expect(messages).toHaveLength(4);
+  });
 });
