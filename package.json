@@ -1,0 +1,21 @@
+{
+  "name": "my-agent-sdk",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "test": "turbo run test"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "tsup": "latest",
+    "turbo": "latest",
+    "typescript": "latest",
+    "vitest": "latest"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "dependencies": {
+    "zod-to-json-schema": "^3.25.2"
+  }
+}

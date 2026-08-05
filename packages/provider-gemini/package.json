@@ -1,0 +1,21 @@
+{
+  "name": "@agent-sdk/provider-gemini",
+  "version": "0.1.0",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@agent-sdk/core": "workspace:*",
+    "@google/genai": "latest",
+    "zod-to-json-schema": "^3.25.2"
+  },
+  "devDependencies": {
+    "tsup": "latest",
+    "typescript": "latest"
+  }
+}
