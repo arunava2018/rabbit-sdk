@@ -1,5 +1,22 @@
+# Dependencies
+node_modules
 node_modules/
+**/node_modules
+**/node_modules/
+
+# Environment
 .env
+.env.*
+**/.env
+**/.env.*
+
+# Build
+dist
 dist/
+**/dist
+**/dist/
+.turbo
 .turbo/
+**/.turbo
+coverage
 coverage/
