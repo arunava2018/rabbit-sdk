@@ -1,4 +1,4 @@
-import { Provider, ProviderRequest, ProviderResponse, Message } from "@agent-sdk/core";
+import { Provider, ProviderRequest, ProviderResponse, Message } from "@rabbit-sdk/core";
 import OpenAI from "openai";
 import { zodToJsonSchema } from "zod-to-json-schema";
 

@@ -1,5 +1,5 @@
 {
-  "name": "@agent-sdk/agent-sdk",
+  "name": "@rabbit-sdk/rabbit-sdk",
   "version": "0.1.0",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -10,10 +10,10 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "@agent-sdk/core": "workspace:*",
-    "@agent-sdk/provider-openai": "workspace:*",
-    "@agent-sdk/provider-groq": "workspace:*",
-    "@agent-sdk/provider-gemini": "workspace:*"
+    "@rabbit-sdk/core": "workspace:*",
+    "@rabbit-sdk/provider-openai": "workspace:*",
+    "@rabbit-sdk/provider-groq": "workspace:*",
+    "@rabbit-sdk/provider-gemini": "workspace:*"
   },
   "devDependencies": {
     "typescript": "latest",

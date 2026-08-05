@@ -1,5 +1,5 @@
 {
-  "name": "my-agent-sdk",
+  "name": "rabbit-sdk",
   "private": true,
   "scripts": {
     "build": "turbo run build",

@@ -1,4 +1,4 @@
-import { Agent, OpenAIProvider, GroqProvider, GeminiProvider, MaxLengthGuardrail, Guardrail, Tool } from "@agent-sdk/agent-sdk";
+import { Agent, OpenAIProvider, GroqProvider, GeminiProvider, MaxLengthGuardrail, Guardrail, Tool } from "@rabbit-sdk/rabbit-sdk";
 import "dotenv/config";
 import { z } from "zod";
 import * as readline from "readline/promises";
