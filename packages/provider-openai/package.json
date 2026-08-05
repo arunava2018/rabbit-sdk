@@ -16,6 +16,6 @@
   },
   "devDependencies": {
     "tsup": "latest",
-    "typescript": "latest"
+    "typescript": "^5.7.3"
   }
 }

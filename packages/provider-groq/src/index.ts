@@ -75,7 +75,7 @@ export class GroqProvider extends Provider {
     };
 
     if (choice.message?.tool_calls) {
-      responseMessage.toolCalls = choice.message.tool_calls.map((tc) => ({
+      responseMessage.toolCalls = choice.message.tool_calls.map((tc: any) => ({
         id: tc.id || Math.random().toString(36).substring(7),
         name: tc.function?.name || "",
         arguments: tc.function?.arguments ? JSON.parse(tc.function.arguments) : {},

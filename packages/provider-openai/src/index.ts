@@ -76,7 +76,7 @@ export class OpenAIProvider extends Provider {
     };
 
     if (choice.message.tool_calls) {
-      responseMessage.toolCalls = choice.message.tool_calls.map((tc) => ({
+      responseMessage.toolCalls = choice.message.tool_calls.map((tc: any) => ({
         id: tc.id,
         name: tc.function.name,
         arguments: tc.function.arguments ? JSON.parse(tc.function.arguments) : {},

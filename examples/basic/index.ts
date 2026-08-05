@@ -12,6 +12,7 @@ async function main() {
       return `The weather in ${location} is sunny.`;
     }
   };
+  const maxLengthGuardrail: Guardrail = new MaxLengthGuardrail(500, "output");
 
   let validProvider;
   if (process.env.OPENAI_API_KEY) {
@@ -34,6 +35,7 @@ async function main() {
     maxSteps: 3,                        // Prevents infinite loops if the LLM gets confused
     systemPrompt: "You are a helpful and concise assistant. You have access to a weather tool. Use it when the user asks about the weather.",
     tools: [weatherTool],
+    guardrails: [maxLengthGuardrail]
   });
 
   console.log(`\n🤖 Agent initialized with primary provider: ${primaryProvider.name} (broken)`);

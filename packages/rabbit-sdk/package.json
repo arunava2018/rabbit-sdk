@@ -16,7 +16,7 @@
     "@rabbit-sdk/provider-gemini": "workspace:*"
   },
   "devDependencies": {
-    "typescript": "latest",
+    "typescript": "^5.7.3",
     "tsup": "latest"
   }
 }
