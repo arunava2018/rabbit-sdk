@@ -20,3 +20,6 @@ dist/
 **/.turbo
 coverage
 coverage/
+
+# Demo Project
+demo-test/

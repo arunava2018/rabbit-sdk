@@ -26,7 +26,7 @@
 Rabbit SDK gives you everything you need to orchestrate Large Language Models with **strict type safety**, **automatic JSON schema conversion**, **custom tools**, **conversational memory**, **provider fallback chains**, and **safety guardrails** — all in a clean, extensible architecture.
 
 ```typescript
-import { Agent, OpenAIProvider, Tool } from "@rabbit-sdk/rabbit-sdk";
+import { Agent, OpenAIProvider, Tool } from "@rabbit-agent-sdk/rabbit-agent-sdk";
 import { z } from "zod";
 
 const agent = new Agent({
@@ -66,12 +66,12 @@ console.log(response);
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                       @rabbit-sdk/rabbit-sdk                    │
+│                       @rabbit-agent-sdk/rabbit-agent-sdk                    │
 │              (Umbrella package — re-exports everything)          │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  ┌──────────────────┐  ┌──────────────┐  ┌──────────────────┐  │
-│  │ @rabbit-sdk/core  │  │   Provider   │  │   Provider       │  │
+│  │ @rabbit-agent-sdk/core  │  │   Provider   │  │   Provider       │  │
 │  │                   │  │   OpenAI     │  │   Groq           │  │
 │  │  • Agent          │  │              │  │                  │  │
 │  │  • Memory         │  └──────┬───────┘  └───────┬──────────┘  │
@@ -92,12 +92,12 @@ The SDK is structured as a **pnpm monorepo** with the following packages:
 
 | Package | npm Name | Purpose |
 | :--- | :--- | :--- |
-| `packages/core` | `@rabbit-sdk/core` | Agent engine, memory, guardrails, tools, types, errors |
-| `packages/provider-openai` | `@rabbit-sdk/provider-openai` | OpenAI provider (`gpt-4o` default) |
-| `packages/provider-groq` | `@rabbit-sdk/provider-groq` | Groq provider (`llama3-8b-8192` default) |
-| `packages/provider-gemini` | `@rabbit-sdk/provider-gemini` | Gemini provider (`gemini-2.5-flash` default) |
-| `packages/provider-anthropic` | `@rabbit-sdk/provider-anthropic` | Anthropic provider (`claude-3-5-sonnet-20241022` default) |
-| `packages/rabbit-sdk` | `@rabbit-sdk/rabbit-sdk` | Umbrella package — re-exports all of the above |
+| `packages/core` | `@rabbit-agent-sdk/core` | Agent engine, memory, guardrails, tools, types, errors |
+| `packages/provider-openai` | `@rabbit-agent-sdk/provider-openai` | OpenAI provider (`gpt-4o` default) |
+| `packages/provider-groq` | `@rabbit-agent-sdk/provider-groq` | Groq provider (`llama3-8b-8192` default) |
+| `packages/provider-gemini` | `@rabbit-agent-sdk/provider-gemini` | Gemini provider (`gemini-2.5-flash` default) |
+| `packages/provider-anthropic` | `@rabbit-agent-sdk/provider-anthropic` | Anthropic provider (`claude-3-5-sonnet-20241022` default) |
+| `packages/rabbit-agent-sdk` | `@rabbit-agent-sdk/rabbit-agent-sdk` | Umbrella package — re-exports all of the above |
 
 ---
 
@@ -112,8 +112,8 @@ The SDK is structured as a **pnpm monorepo** with the following packages:
 ### Step 1 — Clone and Install
 
 ```bash
-git clone https://github.com/arunava2018/rabbit-sdk.git
-cd rabbit-sdk
+git clone https://github.com/arunava2018/rabbit-agent-sdk.git
+cd rabbit-agent-sdk
 pnpm install
 ```
 
@@ -190,7 +190,7 @@ Providers are the bridge between the Agent and an LLM API. The SDK ships with th
 #### OpenAI
 
 ```typescript
-import { OpenAIProvider } from "@rabbit-sdk/rabbit-sdk";
+import { OpenAIProvider } from "@rabbit-agent-sdk/rabbit-agent-sdk";
 
 const provider = new OpenAIProvider({
   apiKey: process.env.OPENAI_API_KEY,   // Optional — falls back to OPENAI_API_KEY env var
@@ -201,7 +201,7 @@ const provider = new OpenAIProvider({
 #### Groq
 
 ```typescript
-import { GroqProvider } from "@rabbit-sdk/rabbit-sdk";
+import { GroqProvider } from "@rabbit-agent-sdk/rabbit-agent-sdk";
 
 const provider = new GroqProvider({
   apiKey: process.env.GROQ_API_KEY,     // Optional — falls back to GROQ_API_KEY env var
@@ -212,7 +212,7 @@ const provider = new GroqProvider({
 #### Gemini
 
 ```typescript
-import { GeminiProvider } from "@rabbit-sdk/rabbit-sdk";
+import { GeminiProvider } from "@rabbit-agent-sdk/rabbit-agent-sdk";
 
 const provider = new GeminiProvider({
   apiKey: process.env.GEMINI_API_KEY,   // Optional — falls back to GOOGLE_GENERATIVE_AI_API_KEY env var
@@ -223,7 +223,7 @@ const provider = new GeminiProvider({
 #### Anthropic (Claude)
 
 ```typescript
-import { AnthropicProvider } from "@rabbit-sdk/rabbit-sdk";
+import { AnthropicProvider } from "@rabbit-agent-sdk/rabbit-agent-sdk";
 
 const provider = new AnthropicProvider({
   apiKey: process.env.ANTHROPIC_API_KEY, // Optional
@@ -252,7 +252,7 @@ The `Agent` class is the central orchestration engine. It manages the execution 
 #### Basic Initialization
 
 ```typescript
-import { Agent, OpenAIProvider } from "@rabbit-sdk/rabbit-sdk";
+import { Agent, OpenAIProvider } from "@rabbit-agent-sdk/rabbit-agent-sdk";
 
 const agent = new Agent({
   provider: new OpenAIProvider({ apiKey: process.env.OPENAI_API_KEY }),
@@ -277,7 +277,7 @@ import {
   MaxLengthGuardrail,
   FetchTool,
   WebSearchTool,
-} from "@rabbit-sdk/rabbit-sdk";
+} from "@rabbit-agent-sdk/rabbit-agent-sdk";
 
 const agent = new Agent({
   // Required — the primary LLM provider
@@ -334,7 +334,7 @@ Tools let your agent call external functions. Define them with a `zod` schema an
 #### Step 1 — Define a Tool
 
 ```typescript
-import { Tool } from "@rabbit-sdk/rabbit-sdk";
+import { Tool } from "@rabbit-agent-sdk/rabbit-agent-sdk";
 import { z } from "zod";
 
 const calculatorTool: Tool = {
@@ -419,7 +419,7 @@ console.log(response);
 #### Using Memory Directly
 
 ```typescript
-import { BufferMemory } from "@rabbit-sdk/rabbit-sdk";
+import { BufferMemory } from "@rabbit-agent-sdk/rabbit-agent-sdk";
 
 const memory = new BufferMemory();
 
@@ -441,7 +441,7 @@ memory.clear();
 Extend the abstract `Memory` class to build custom backends (Redis, PostgreSQL, file-based, etc.):
 
 ```typescript
-import { Memory, Message } from "@rabbit-sdk/rabbit-sdk";
+import { Memory, Message } from "@rabbit-agent-sdk/rabbit-agent-sdk";
 
 class RedisMemory extends Memory {
   private redis: RedisClient;
@@ -512,7 +512,7 @@ import {
   PromptInjectionGuardrail,
   MaxLengthGuardrail,
   ToneGuardrail,
-} from "@rabbit-sdk/rabbit-sdk";
+} from "@rabbit-agent-sdk/rabbit-agent-sdk";
 
 const agent = new Agent({
   provider: new OpenAIProvider(),
@@ -550,7 +550,7 @@ const guardrail = new ProfanityGuardrail(
 #### Example: RegexGuardrail
 
 ```typescript
-import { RegexGuardrail } from "@rabbit-sdk/rabbit-sdk";
+import { RegexGuardrail } from "@rabbit-agent-sdk/rabbit-agent-sdk";
 
 // Block messages containing email addresses
 const noEmailsGuardrail = new RegexGuardrail(
@@ -570,7 +570,7 @@ const requireJsonGuardrail = new RegexGuardrail(
 #### Example: PromptInjectionGuardrail with Custom Heuristics
 
 ```typescript
-import { PromptInjectionGuardrail } from "@rabbit-sdk/rabbit-sdk";
+import { PromptInjectionGuardrail } from "@rabbit-agent-sdk/rabbit-agent-sdk";
 
 const guardrail = new PromptInjectionGuardrail(
   [
@@ -588,7 +588,7 @@ const guardrail = new PromptInjectionGuardrail(
 Extend the abstract `Guardrail` class:
 
 ```typescript
-import { Guardrail, Message } from "@rabbit-sdk/rabbit-sdk";
+import { Guardrail, Message } from "@rabbit-agent-sdk/rabbit-agent-sdk";
 
 class NoApologyGuardrail extends Guardrail {
   readonly name = "NoApologyGuardrail";
@@ -680,7 +680,7 @@ import {
   ToolExecutionError,
   ProviderError,
   BudgetExceededError,
-} from "@rabbit-sdk/rabbit-sdk";
+} from "@rabbit-agent-sdk/rabbit-agent-sdk";
 
 try {
   const response = await agent.run(userInput);
@@ -710,7 +710,7 @@ try {
 Makes HTTP requests to REST APIs. The LLM can call this to fetch data from any URL.
 
 ```typescript
-import { FetchTool } from "@rabbit-sdk/rabbit-sdk";
+import { FetchTool } from "@rabbit-agent-sdk/rabbit-agent-sdk";
 
 const fetchTool = new FetchTool();
 
@@ -737,7 +737,7 @@ await agent.run("Fetch the latest posts from https://jsonplaceholder.typicode.co
 Searches the web using the [Tavily API](https://tavily.com/). Falls back to a mock response if no API key is provided.
 
 ```typescript
-import { WebSearchTool } from "@rabbit-sdk/rabbit-sdk";
+import { WebSearchTool } from "@rabbit-agent-sdk/rabbit-agent-sdk";
 
 // With a real API key
 const searchTool = new WebSearchTool(process.env.TAVILY_API_KEY);
@@ -767,7 +767,7 @@ await agent.run("What are the latest developments in AI?");
 Extend the abstract `Provider` class to integrate any LLM API:
 
 ```typescript
-import { Provider, ProviderRequest, ProviderResponse } from "@rabbit-sdk/rabbit-sdk";
+import { Provider, ProviderRequest, ProviderResponse } from "@rabbit-agent-sdk/rabbit-agent-sdk";
 
 class MistralProvider extends Provider {
   public name = "mistral";
@@ -949,7 +949,7 @@ class BudgetExceededError extends AgentError { }
 ### Interactive Chat Agent
 
 ```typescript
-import { Agent, OpenAIProvider, Tool } from "@rabbit-sdk/rabbit-sdk";
+import { Agent, OpenAIProvider, Tool } from "@rabbit-agent-sdk/rabbit-agent-sdk";
 import { z } from "zod";
 import * as readline from "readline/promises";
 
@@ -995,7 +995,7 @@ import {
   PromptInjectionGuardrail,
   ToneGuardrail,
   MaxLengthGuardrail,
-} from "@rabbit-sdk/rabbit-sdk";
+} from "@rabbit-agent-sdk/rabbit-agent-sdk";
 
 const agent = new Agent({
   provider: new GeminiProvider({ apiKey: process.env.GEMINI_API_KEY }),
@@ -1016,7 +1016,7 @@ const agent = new Agent({
 ### Multi-Provider Resilient Agent
 
 ```typescript
-import { Agent, OpenAIProvider, GroqProvider, GeminiProvider, FetchTool, WebSearchTool } from "@rabbit-sdk/rabbit-sdk";
+import { Agent, OpenAIProvider, GroqProvider, GeminiProvider, FetchTool, WebSearchTool } from "@rabbit-agent-sdk/rabbit-agent-sdk";
 
 const agent = new Agent({
   provider: new OpenAIProvider({ apiKey: process.env.OPENAI_API_KEY }),
@@ -1056,7 +1056,7 @@ pnpm test
 ### Project Structure
 
 ```
-rabbit-sdk/
+rabbit-agent-sdk/
 ├── packages/
 │   ├── core/                  # Core engine (Agent, Memory, Guardrails, Tools, Types)
 │   │   └── src/
@@ -1081,7 +1081,7 @@ rabbit-sdk/
 │   ├── provider-openai/       # OpenAI provider package
 │   ├── provider-groq/         # Groq provider package
 │   ├── provider-gemini/       # Gemini provider package
-│   └── rabbit-sdk/            # Umbrella re-export package
+│   └── rabbit-agent-sdk/            # Umbrella re-export package
 ├── examples/
 │   └── basic/                 # Interactive chat example
 ├── turbo.json                 # Turborepo configuration

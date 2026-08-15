@@ -1,5 +1,5 @@
 {
-  "name": "@rabbit-sdk/provider-openai",
+  "name": "@rabbit-agent-sdk/provider-openai",
   "version": "0.1.0",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -10,7 +10,7 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "@rabbit-sdk/core": "workspace:*",
+    "@rabbit-agent-sdk/core": "workspace:*",
     "openai": "^4.28.0",
     "zod-to-json-schema": "^3.25.2"
   },

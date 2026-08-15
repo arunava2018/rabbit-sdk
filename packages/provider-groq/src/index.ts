@@ -1,4 +1,4 @@
-import { Provider, ProviderRequest, ProviderResponse, Message } from "@rabbit-sdk/core";
+import { Provider, ProviderRequest, ProviderResponse, Message } from "@rabbit-agent-sdk/core";
 import Groq from "groq-sdk";
 import { zodToJsonSchema } from "zod-to-json-schema";
 

@@ -1,5 +1,5 @@
 {
-  "name": "@rabbit-sdk/provider-gemini",
+  "name": "@rabbit-agent-sdk/provider-gemini",
   "version": "0.1.0",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -10,7 +10,7 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "@rabbit-sdk/core": "workspace:*",
+    "@rabbit-agent-sdk/core": "workspace:*",
     "@google/genai": "latest",
     "zod-to-json-schema": "^3.25.2"
   },

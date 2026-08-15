@@ -1,5 +1,5 @@
 {
-  "name": "@rabbit-sdk/provider-groq",
+  "name": "@rabbit-agent-sdk/provider-groq",
   "version": "0.1.0",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -10,7 +10,7 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "@rabbit-sdk/core": "workspace:*",
+    "@rabbit-agent-sdk/core": "workspace:*",
     "groq-sdk": "^0.3.2",
     "zod-to-json-schema": "^3.25.2"
   },

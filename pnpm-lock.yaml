@@ -30,9 +30,9 @@ importers:
 
   examples/basic:
     dependencies:
-      '@rabbit-sdk/rabbit-sdk':
+      '@rabbit-agent-sdk/rabbit-agent-sdk':
         specifier: workspace:*
-        version: link:../../packages/rabbit-sdk
+        version: link:../../packages/rabbit-agent-sdk
       dotenv:
         specifier: ^16.4.5
         version: 16.6.1
@@ -68,7 +68,7 @@ importers:
       '@anthropic-ai/sdk':
         specifier: ^0.33.1
         version: 0.33.1
-      '@rabbit-sdk/core':
+      '@rabbit-agent-sdk/core':
         specifier: workspace:*
         version: link:../core
       zod-to-json-schema:
@@ -87,7 +87,7 @@ importers:
       '@google/genai':
         specifier: latest
         version: 2.15.0
-      '@rabbit-sdk/core':
+      '@rabbit-agent-sdk/core':
         specifier: workspace:*
         version: link:../core
       zod-to-json-schema:
@@ -103,7 +103,7 @@ importers:
 
   packages/provider-groq:
     dependencies:
-      '@rabbit-sdk/core':
+      '@rabbit-agent-sdk/core':
         specifier: workspace:*
         version: link:../core
       groq-sdk:
@@ -122,7 +122,7 @@ importers:
 
   packages/provider-openai:
     dependencies:
-      '@rabbit-sdk/core':
+      '@rabbit-agent-sdk/core':
         specifier: workspace:*
         version: link:../core
       openai:
@@ -139,21 +139,21 @@ importers:
         specifier: ^5.7.3
         version: 5.9.3
 
-  packages/rabbit-sdk:
+  packages/rabbit-agent-sdk:
     dependencies:
-      '@rabbit-sdk/core':
+      '@rabbit-agent-sdk/core':
         specifier: workspace:*
         version: link:../core
-      '@rabbit-sdk/provider-anthropic':
+      '@rabbit-agent-sdk/provider-anthropic':
         specifier: workspace:*
         version: link:../provider-anthropic
-      '@rabbit-sdk/provider-gemini':
+      '@rabbit-agent-sdk/provider-gemini':
         specifier: workspace:*
         version: link:../provider-gemini
-      '@rabbit-sdk/provider-groq':
+      '@rabbit-agent-sdk/provider-groq':
         specifier: workspace:*
         version: link:../provider-groq
-      '@rabbit-sdk/provider-openai':
+      '@rabbit-agent-sdk/provider-openai':
         specifier: workspace:*
         version: link:../provider-openai
     devDependencies:

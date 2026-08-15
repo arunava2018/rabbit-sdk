@@ -14,7 +14,7 @@
     "isolatedModules": true,
     "ignoreDeprecations": "5.0",
     "paths": {
-      "@rabbit-sdk/*": ["./packages/*/src"]
+      "@rabbit-agent-sdk/*": ["./packages/*/src"]
     }
   }
 }
