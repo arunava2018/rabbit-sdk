@@ -81,10 +81,10 @@ console.log(response);
 │  │  • Types          │  │    generate(request) → response     │  │
 │  └──────────┬────────┘  └──────┬──────────────────┬──────────┘  │
 │             │                  │                  │             │
-│             │           ┌──────┴───────┐          │             │
-│             │           │   Provider   │          │             │
-│             │           │   Gemini     │          │             │
-│             │           └──────────────┘          │             │
+│             │           ┌──────┴───────┐   ┌──────┴───────┐     │
+│             │           │   Provider   │   │   Provider   │     │
+│             │           │   Gemini     │   │   Anthropic  │     │
+│             │           └──────────────┘   └──────────────┘     │
 └─────────────┴──────────────────────────────────────┴─────────────┘
 ```
 
@@ -96,6 +96,7 @@ The SDK is structured as a **pnpm monorepo** with the following packages:
 | `packages/provider-openai` | `@rabbit-sdk/provider-openai` | OpenAI provider (`gpt-4o` default) |
 | `packages/provider-groq` | `@rabbit-sdk/provider-groq` | Groq provider (`llama3-8b-8192` default) |
 | `packages/provider-gemini` | `@rabbit-sdk/provider-gemini` | Gemini provider (`gemini-2.5-flash` default) |
+| `packages/provider-anthropic` | `@rabbit-sdk/provider-anthropic` | Anthropic provider (`claude-3-5-sonnet-20241022` default) |
 | `packages/rabbit-sdk` | `@rabbit-sdk/rabbit-sdk` | Umbrella package — re-exports all of the above |
 
 ---
@@ -131,6 +132,7 @@ Create a `.env` file in the `examples/basic/` directory:
 OPENAI_API_KEY=sk-your-openai-key
 GROQ_API_KEY=gsk_your-groq-key
 GEMINI_API_KEY=your-gemini-key
+ANTHROPIC_API_KEY=your-anthropic-key
 
 # Optional — for WebSearchTool
 TAVILY_API_KEY=tvly-your-tavily-key
@@ -215,6 +217,17 @@ import { GeminiProvider } from "@rabbit-sdk/rabbit-sdk";
 const provider = new GeminiProvider({
   apiKey: process.env.GEMINI_API_KEY,   // Optional — falls back to GOOGLE_GENERATIVE_AI_API_KEY env var
   model: "gemini-2.5-flash",            // Optional — defaults to "gemini-2.5-flash"
+});
+```
+
+#### Anthropic (Claude)
+
+```typescript
+import { AnthropicProvider } from "@rabbit-sdk/rabbit-sdk";
+
+const provider = new AnthropicProvider({
+  apiKey: process.env.ANTHROPIC_API_KEY, // Optional
+  model: "claude-3-5-sonnet-20241022",   // Optional — defaults to "claude-3-5-sonnet-20241022"
 });
 ```
 
@@ -756,12 +769,12 @@ Extend the abstract `Provider` class to integrate any LLM API:
 ```typescript
 import { Provider, ProviderRequest, ProviderResponse } from "@rabbit-sdk/rabbit-sdk";
 
-class AnthropicProvider extends Provider {
-  public name = "anthropic";
+class MistralProvider extends Provider {
+  public name = "mistral";
   private apiKey: string;
 
   constructor(config: { apiKey: string; model?: string }) {
-    super(config.model || "claude-3-5-sonnet-20241022");
+    super(config.model || "mistral-large-latest");
     this.apiKey = config.apiKey;
   }
 
@@ -769,23 +782,25 @@ class AnthropicProvider extends Provider {
     request: ProviderRequest
   ): Promise<ProviderResponse | AsyncIterable<ProviderResponse>> {
 
-    // 1. Map the standardized messages to Anthropic's format
+    // 1. Map the standardized messages to Mistral's format
     const messages = request.messages.map((m) => ({
-      role: m.role === "assistant" ? "assistant" : "user",
+      role: m.role,
       content: m.content,
     }));
 
-    // 2. Call the Anthropic API
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    if (request.systemPrompt) {
+      messages.unshift({ role: "system", content: request.systemPrompt });
+    }
+
+    // 2. Call the Mistral API
+    const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": this.apiKey,
-        "anthropic-version": "2023-06-01",
+        "Authorization": `Bearer ${this.apiKey}`,
       },
       body: JSON.stringify({
         model: request.model,
-        system: request.systemPrompt,
         messages,
         max_tokens: request.maxTokens ?? 1024,
       }),
@@ -797,12 +812,12 @@ class AnthropicProvider extends Provider {
     return {
       message: {
         role: "assistant",
-        content: data.content[0]?.text || "",
+        content: data.choices[0]?.message?.content || "",
       },
       usage: {
-        promptTokens: data.usage?.input_tokens || 0,
-        completionTokens: data.usage?.output_tokens || 0,
-        totalTokens: (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0),
+        promptTokens: data.usage?.prompt_tokens || 0,
+        completionTokens: data.usage?.completion_tokens || 0,
+        totalTokens: data.usage?.total_tokens || 0,
       },
     };
   }
@@ -810,9 +825,9 @@ class AnthropicProvider extends Provider {
 
 // Use it just like any other provider
 const agent = new Agent({
-  provider: new AnthropicProvider({
-    apiKey: process.env.ANTHROPIC_API_KEY!,
-    model: "claude-3-5-sonnet-20241022",
+  provider: new MistralProvider({
+    apiKey: process.env.MISTRAL_API_KEY!,
+    model: "mistral-large-latest",
   }),
 });
 ```
