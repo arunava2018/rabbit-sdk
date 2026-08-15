@@ -1,6 +1,6 @@
 {
   "name": "@rabbit-agent-sdk/rabbit-agent-sdk",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -19,5 +19,12 @@
   "devDependencies": {
     "typescript": "^5.7.3",
     "tsup": "latest"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
   }
 }
