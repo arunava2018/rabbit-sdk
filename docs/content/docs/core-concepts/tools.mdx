@@ -1,0 +1,75 @@
+---
+title: Tools
+description: Extend your Agent's capabilities by providing Tools it can call.
+---
+
+# Tools
+
+Tools let your agent call external functions. Define them with a `zod` schema and the SDK handles everything — JSON Schema conversion for the LLM, argument validation, execution, and result injection back into the conversation.
+
+## Step 1: Define a Tool
+
+```typescript
+import { Tool } from "@rabbit-agent-sdk/rabbit-agent-sdk";
+import { z } from "zod";
+
+const calculatorTool: Tool = {
+  name: "calculator",
+  description: "Perform basic arithmetic. Supports +, -, *, /.",
+  schema: z.object({
+    expression: z.string().describe("A mathematical expression like '2 + 2'"),
+  }),
+  execute: async ({ expression }) => {
+    try {
+      // WARNING: eval is used for demonstration only — use a safe parser in production
+      return String(eval(expression));
+    } catch {
+      return "Error: Invalid expression";
+    }
+  },
+};
+```
+
+## Step 2: Register with the Agent
+
+```typescript
+import { Agent, OpenAIProvider } from "@rabbit-agent-sdk/rabbit-agent-sdk";
+
+const agent = new Agent({
+  provider: new OpenAIProvider({ apiKey: process.env.OPENAI_API_KEY }),
+  tools: [calculatorTool],
+  systemPrompt: "You are a math assistant. Use the calculator tool for all arithmetic.",
+});
+```
+
+## Step 3: Run
+
+```typescript
+const answer = await agent.run("What is 1337 * 42?");
+console.log(answer);
+// → "1337 × 42 = 56,154"
+```
+
+## What Happens Under the Hood
+
+1. The agent sends the user's prompt + tool definitions (auto-converted from Zod → JSON Schema) to the LLM.
+2. The LLM responds with a **tool call** (`{ name: "calculator", arguments: { expression: "1337 * 42" } }`).
+3. The agent **validates** arguments against the Zod schema using `tool.schema.parse(...)`.
+4. The agent **executes** the tool and saves the result to memory as a `role: "tool"` message.
+5. The agent sends the conversation (now including the tool result) back to the LLM.
+6. The LLM generates a final natural-language response.
+
+## Multiple Tools
+
+You can register as many tools as you need. The LLM decides which tool(s) to call based on the user's prompt and tool descriptions.
+
+```typescript
+const agent = new Agent({
+  provider: new OpenAIProvider(),
+  tools: [calculatorTool, weatherTool, fetchTool, webSearchTool],
+});
+```
+
+<Callout type="default">
+  With your agent acting on tools, it needs a place to remember everything. Learn about [Memory](/docs/core-concepts/memory) next.
+</Callout>

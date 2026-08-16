@@ -59,6 +59,8 @@ console.log(response);
 | **📡 Streaming** | First-class support for streaming responses via async generators |
 | **📦 Built-in Toolkit** | Pre-built `FetchTool` and `WebSearchTool` ready to use out of the box |
 | **⚡ Budget Control** | `maxSteps` limiter prevents infinite agentic loops |
+| **🔍 Tracing & Reliability** | Detailed lifecycle event tracing (tokens, tools, memory, etc.) |
+| **🤝 Agent Handoffs** | Graceful multi-agent delegation via the `HandoffResult` pattern |
 
 ---
 
@@ -179,7 +181,9 @@ Agent: The weather in Paris is sunny!
 7. [Provider Fallbacks](#7-provider-fallbacks)
 8. [Error Handling](#8-error-handling)
 9. [Built-in Tools](#9-built-in-tools)
-10. [Custom Providers](#10-building-a-custom-provider)
+10. [Tracing & Reliability](#10-tracing--reliability)
+11. [Agent Handoffs](#11-agent-handoffs)
+12. [Custom Providers](#12-building-a-custom-provider)
 
 ---
 
@@ -762,7 +766,68 @@ await agent.run("What are the latest developments in AI?");
 
 ---
 
-### 10. Building a Custom Provider
+### 10. Tracing & Reliability
+
+The SDK includes a built-in tracing subsystem to give you full visibility into agent runs. You can track model calls, token usage, tool executions, memory operations, handoffs, and errors.
+
+```typescript
+import { Agent, OpenAIProvider, Tracer } from "@rabbit-agent-sdk/rabbit-agent-sdk";
+
+const tracer = new Tracer();
+const agent = new Agent({
+  provider: new OpenAIProvider(),
+  tracer,
+});
+
+await agent.run("Calculate 25 * 4");
+
+// Retrieve the trace for the last run
+const trace = agent.getLastTrace();
+console.log(trace?.events);
+// Output will include:
+// - { type: "RunStart", ... }
+// - { type: "ModelCall", model: "gpt-4o", promptTokens: 45, completionTokens: 12 }
+// - { type: "ToolCall", toolCall: { name: "calculator", ... } }
+// - { type: "MemoryWrite", message: ... }
+```
+
+---
+
+### 11. Agent Handoffs
+
+Agents can gracefully delegate tasks to other agents without endless loop recursion. 
+
+1. Create a handoff tool using `createHandoffTool`.
+2. The agent's `run()` method will return a `HandoffResult` when the tool is called.
+3. Your application can then seamlessly start the next agent.
+
+```typescript
+import { Agent, OpenAIProvider, createHandoffTool } from "@rabbit-agent-sdk/rabbit-agent-sdk";
+
+const handoffToSupport = createHandoffTool(
+  "SupportAgent",
+  "Use this to handoff to the support agent for billing issues."
+);
+
+const agent = new Agent({
+  provider: new OpenAIProvider(),
+  tools: [handoffToSupport],
+});
+
+const result = await agent.run("I have a problem with my bill.");
+
+if (typeof result !== "string" && result.type === "handoff") {
+  console.log(`Agent handed off to: ${result.targetAgent}`);
+  console.log(`Context passed: ${result.context}`);
+  
+  // Here you can invoke the next agent:
+  // await supportAgent.run(result.context);
+}
+```
+
+---
+
+### 12. Building a Custom Provider
 
 Extend the abstract `Provider` class to integrate any LLM API:
 

@@ -1,0 +1,85 @@
+---
+title: Installation
+description: How to install the Rabbit Agent SDK in your project.
+---
+
+# Installation
+
+## Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+- **Node.js** ≥ 18
+- **pnpm** ≥ 9.0 (package manager)
+- An API key from at least one provider (OpenAI, Groq, Gemini, or Anthropic)
+
+## Install the SDK
+
+You can install the umbrella package, which includes everything you need out of the box.
+
+<Tabs defaultValue="pnpm">
+  <TabsList>
+    <TabsTrigger value="pnpm">pnpm</TabsTrigger>
+    <TabsTrigger value="npm">npm</TabsTrigger>
+    <TabsTrigger value="yarn">yarn</TabsTrigger>
+  </TabsList>
+  <TabsContent value="pnpm">
+    ```bash
+    pnpm add @rabbit-agent-sdk/rabbit-agent-sdk
+    ```
+  </TabsContent>
+  <TabsContent value="npm">
+    ```bash
+    npm install @rabbit-agent-sdk/rabbit-agent-sdk
+    ```
+  </TabsContent>
+  <TabsContent value="yarn">
+    ```bash
+    yarn add @rabbit-agent-sdk/rabbit-agent-sdk
+    ```
+  </TabsContent>
+</Tabs>
+
+### Individual Packages
+
+If you prefer to keep your bundle size minimal, you can install the core package and only the specific providers you need:
+
+- `@rabbit-agent-sdk/core` - Agent engine, memory, guardrails, tools, types, errors
+- `@rabbit-agent-sdk/provider-openai` - OpenAI provider
+- `@rabbit-agent-sdk/provider-groq` - Groq provider
+- `@rabbit-agent-sdk/provider-gemini` - Gemini provider
+- `@rabbit-agent-sdk/provider-anthropic` - Anthropic provider
+- `@rabbit-agent-sdk/rabbit-agent-sdk` - Umbrella package (re-exports all above)
+
+## Environment Variables
+
+Create a `.env` file in the root of your project to securely store your API keys:
+
+```env
+# Pick at least one:
+OPENAI_API_KEY=sk-your-openai-key
+GROQ_API_KEY=gsk_your-groq-key
+GEMINI_API_KEY=your-gemini-key
+ANTHROPIC_API_KEY=your-anthropic-key
+
+# Optional — for WebSearchTool
+TAVILY_API_KEY=tvly-your-tavily-key
+```
+
+## TypeScript Configuration
+
+Rabbit SDK is built with TypeScript and relies on strict type checking. Ensure your `tsconfig.json` has `strict` mode enabled:
+
+```json
+{
+  "compilerOptions": {
+    "strict": true,
+    "target": "ES2022",
+    "moduleResolution": "node"
+  }
+}
+```
+
+<Callout type="default">
+  All set? Let's move on to the [Quick Start](/docs/getting-started/quick-start) guide!
+</Callout>

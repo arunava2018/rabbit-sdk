@@ -1,0 +1,33 @@
+---
+title: Provider Fallbacks
+description: Create self-healing agents with multi-provider fallback chains
+---
+
+Configure backup providers to create self-healing agents. If the primary provider fails (due to an API error, rate limit, invalid key, etc.), the agent automatically tries the next provider in the chain.
+
+## Configuring Fallbacks
+
+```typescript
+import { Agent, OpenAIProvider, GroqProvider, GeminiProvider } from "@rabbit-agent-sdk/rabbit-agent-sdk";
+
+const agent = new Agent({
+  provider: new OpenAIProvider({ apiKey: "sk-invalid-key" }),  // Will fail
+  fallbackProviders: [
+    new GroqProvider({ apiKey: process.env.GROQ_API_KEY }),    // Fallback 1
+    new GeminiProvider({ apiKey: process.env.GEMINI_API_KEY }), // Fallback 2
+  ],
+});
+
+// The agent self-heals — automatically switches to Groq, then Gemini if needed
+const response = await agent.run("Hello!");
+```
+
+## How it works
+
+1. Primary provider (`OpenAI`) is tried first → fails with 401.
+2. Fallback 1 (`Groq`) is tried → succeeds ✓
+3. The response is returned seamlessly to the caller.
+
+<Callout type="danger">
+If *all* providers fail, a `ProviderError` is thrown with the last error message.
+</Callout>

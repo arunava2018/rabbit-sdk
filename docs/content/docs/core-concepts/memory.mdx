@@ -1,0 +1,96 @@
+---
+title: Memory
+description: How conversational context and state are managed using Memory.
+---
+
+# Memory
+
+Memory manages the conversation history. Every message (user, assistant, tool calls, tool results) is stored and replayed to the provider on each `agent.run()` call so the model has full context.
+
+## Default: BufferMemory
+
+`BufferMemory` stores everything in an in-memory array. It's the default — you don't need to configure anything:
+
+```typescript
+import { Agent, OpenAIProvider } from "@rabbit-agent-sdk/rabbit-agent-sdk";
+
+const agent = new Agent({
+  provider: new OpenAIProvider(),
+});
+
+// Conversation context is automatically maintained
+await agent.run("My name is Alice.");
+const response = await agent.run("What's my name?");
+console.log(response);
+// → "Your name is Alice."
+```
+
+## Using Memory Directly
+
+You can interact with the agent's memory directly to preload context, read history, or clear it out:
+
+```typescript
+import { BufferMemory } from "@rabbit-agent-sdk/rabbit-agent-sdk";
+
+const memory = new BufferMemory();
+
+// Add messages
+memory.addMessage({ role: "user", content: "Hello!" });
+memory.addMessage({ role: "assistant", content: "Hi there!" });
+
+// Retrieve history
+const messages = memory.getMessages();
+console.log(messages);
+// → [{ role: "user", content: "Hello!" }, { role: "assistant", content: "Hi there!" }]
+
+// Clear history
+memory.clear();
+```
+
+## Building a Custom Memory Backend
+
+Extend the abstract `Memory` class to build custom backends (Redis, PostgreSQL, file-based, etc.):
+
+```typescript
+import { Memory, Message } from "@rabbit-agent-sdk/rabbit-agent-sdk";
+
+class RedisMemory extends Memory {
+  private redis: RedisClient;
+
+  constructor(redis: RedisClient) {
+    super();
+    this.redis = redis;
+  }
+
+  async addMessage(message: Message): Promise<void> {
+    const messages = await this.getMessages();
+    messages.push(message);
+    await this.redis.set("chat:history", JSON.stringify(messages));
+  }
+
+  async addMessages(messages: Message[]): Promise<void> {
+    const existing = await this.getMessages();
+    existing.push(...messages);
+    await this.redis.set("chat:history", JSON.stringify(existing));
+  }
+
+  async getMessages(): Promise<Message[]> {
+    const data = await this.redis.get("chat:history");
+    return data ? JSON.parse(data) : [];
+  }
+
+  async clear(): Promise<void> {
+    await this.redis.del("chat:history");
+  }
+}
+
+// Use it
+const agent = new Agent({
+  provider: new OpenAIProvider(),
+  memory: new RedisMemory(redisClient),
+});
+```
+
+<Callout type="default">
+  With context managed, learn how to keep the LLM inputs and outputs secure with [Guardrails](/docs/core-concepts/guardrails).
+</Callout>

@@ -5,3 +5,5 @@ export * from "./agent";
 export * from "./guardrails";
 export * from "./tools";
 export * from "./errors";
+export * from "./tracing";
+export * from "./handoff";

@@ -1,0 +1,92 @@
+---
+title: Quick Start
+description: Build your first AI agent in under 3 minutes using the Rabbit SDK.
+---
+
+# Quick Start
+
+In this guide, you will install the SDK, configure your first Language Model provider, and build a simple agent capable of calling a tool to fetch weather data.
+
+## Prerequisites
+
+- **Node.js** v18 or later
+- **TypeScript** configured in your project
+- An API key for [OpenAI](https://platform.openai.com/), [Groq](https://console.groq.com/), [Gemini](https://aistudio.google.com/), or [Anthropic](https://console.anthropic.com/)
+
+## Step 1: Install the SDK
+
+Install the core umbrella package via your preferred package manager. It includes everything you need: the agent runtime, memory, guardrails, and all officially supported providers.
+
+```bash
+npm install @rabbit-agent-sdk/rabbit-agent-sdk zod
+```
+*(We also install `zod` as it is required for defining tool schemas).*
+
+## Step 2: Initialize the Agent
+
+Create a new file called `agent.ts`. We'll initialize an agent using the `OpenAIProvider`.
+
+```typescript
+import { Agent, OpenAIProvider } from "@rabbit-agent-sdk/rabbit-agent-sdk";
+
+// The agent requires a provider to communicate with the LLM.
+const agent = new Agent({
+  provider: new OpenAIProvider({ 
+    apiKey: process.env.OPENAI_API_KEY // Ensure this env var is set
+  }),
+  systemPrompt: "You are a helpful and concise assistant.",
+});
+
+// Run the agent!
+const response = await agent.run("Hello, who are you?");
+console.log(response);
+```
+
+Run this script using `ts-node` or `tsx` (e.g. `npx tsx agent.ts`) and you'll get a greeting from the LLM.
+
+## Step 3: Add a Tool
+
+Agents become powerful when they can interact with the outside world. Let's give our agent a `getWeather` tool using Zod for type-safe arguments.
+
+```typescript
+import { Agent, OpenAIProvider, Tool } from "@rabbit-agent-sdk/rabbit-agent-sdk";
+import { z } from "zod";
+
+const weatherTool: Tool = {
+  name: "getWeather",
+  description: "Get the current weather for a specific location.",
+  schema: z.object({
+    location: z.string().describe("The city and state, e.g., San Francisco, CA"),
+  }),
+  execute: async ({ location }) => {
+    // In a real app, you would call a weather API here.
+    return `The weather in ${location} is sunny and 75°F.`;
+  },
+};
+
+const agent = new Agent({
+  provider: new OpenAIProvider({ apiKey: process.env.OPENAI_API_KEY }),
+  systemPrompt: "You are a helpful assistant. Use tools when necessary.",
+  tools: [weatherTool], // Register the tool
+});
+
+const response = await agent.run("What's the weather in Tokyo?");
+console.log(response);
+// → "The weather in Tokyo is sunny and 75°F."
+```
+
+Behind the scenes, the SDK:
+1. Converted your Zod schema into a JSON Schema.
+2. Sent it to OpenAI.
+3. Received the tool call request from the model.
+4. Validated the arguments.
+5. Executed your `execute` function and fed the result back to the LLM to formulate the final answer.
+
+## Next Steps
+
+You now have a working agent! Dive deeper into the core concepts to see what else Rabbit SDK can do:
+
+- 🔌 **[Providers](/docs/core-concepts/providers)**: Learn how to switch to Groq, Gemini, or Claude.
+- 🛠️ **[Tools](/docs/core-concepts/tools)**: Build more complex tools and use the built-in toolkit.
+- 🧠 **[Memory](/docs/core-concepts/memory)**: Manage conversational history.
+- 🛡️ **[Guardrails](/docs/features/guardrails)**: Protect your agent against prompt injection and enforce output schemas.

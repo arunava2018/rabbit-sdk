@@ -1,0 +1,38 @@
+---
+title: Tracing & Reliability
+description: Detailed lifecycle event tracing and visibility.
+---
+
+The SDK includes a built-in tracing subsystem to give you full visibility into agent runs. You can track model calls, token usage, tool executions, memory operations, handoffs, and errors.
+
+## Using the Tracer
+
+You can instantiate a `Tracer` and pass it to your `Agent` configuration. The agent will then automatically log telemetry to that tracer without changing its `run()` response signature.
+
+```typescript
+import { Agent, OpenAIProvider, Tracer } from "@rabbit-agent-sdk/rabbit-agent-sdk";
+
+const tracer = new Tracer();
+const agent = new Agent({
+  provider: new OpenAIProvider(),
+  tracer,
+});
+
+await agent.run("Calculate 25 * 4");
+
+// Retrieve the trace for the last run
+const trace = agent.getLastTrace();
+console.log(trace?.events);
+```
+
+### Trace Events
+
+The `Tracer` captures a variety of fine-grained events. These are particularly helpful for debugging, monitoring costs (via token tracking), and auditing agent behavior.
+
+Some of the events included in the trace are:
+- `RunStart` and `RunEnd`
+- `ModelCall` (including `promptTokens` and `completionTokens`)
+- `ToolCall` and `ToolResult`
+- `MemoryRead` and `MemoryWrite`
+- `Handoff`
+- `Error`

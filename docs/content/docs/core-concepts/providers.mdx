@@ -1,0 +1,68 @@
+---
+title: Providers
+description: Learn how to configure and switch between LLM providers in the Rabbit Agent SDK.
+---
+
+# Providers
+
+Providers are the bridge between the Agent and an LLM API. The SDK ships with four built-in providers, and you can build your own by extending the abstract `Provider` class.
+
+## OpenAI
+
+```typescript
+import { OpenAIProvider } from "@rabbit-agent-sdk/rabbit-agent-sdk";
+
+const provider = new OpenAIProvider({
+  apiKey: process.env.OPENAI_API_KEY,   // Optional — falls back to OPENAI_API_KEY env var
+  model: "gpt-4o",                      // Optional — defaults to "gpt-4o"
+});
+```
+
+## Groq
+
+```typescript
+import { GroqProvider } from "@rabbit-agent-sdk/rabbit-agent-sdk";
+
+const provider = new GroqProvider({
+  apiKey: process.env.GROQ_API_KEY,     // Optional — falls back to GROQ_API_KEY env var
+  model: "llama3-8b-8192",              // Optional — defaults to "llama3-8b-8192"
+});
+```
+
+## Gemini
+
+```typescript
+import { GeminiProvider } from "@rabbit-agent-sdk/rabbit-agent-sdk";
+
+const provider = new GeminiProvider({
+  apiKey: process.env.GEMINI_API_KEY,   // Optional — falls back to GOOGLE_GENERATIVE_AI_API_KEY env var
+  model: "gemini-2.5-flash",            // Optional — defaults to "gemini-2.5-flash"
+});
+```
+
+## Anthropic (Claude)
+
+```typescript
+import { AnthropicProvider } from "@rabbit-agent-sdk/rabbit-agent-sdk";
+
+const provider = new AnthropicProvider({
+  apiKey: process.env.ANTHROPIC_API_KEY, // Optional
+  model: "claude-3-5-sonnet-20241022",   // Optional — defaults to "claude-3-5-sonnet-20241022"
+});
+```
+
+## Switching Providers
+
+Since every provider implements the same abstract interface, swapping is a one-line change:
+
+```typescript
+// Before
+const agent = new Agent({ provider: new OpenAIProvider() });
+
+// After — just change the provider
+const agent = new Agent({ provider: new GeminiProvider() });
+```
+
+<Callout type="info">
+  You can also pass multiple providers as fallbacks to ensure reliability. See the [Agents](/docs/core-concepts/agents) page.
+</Callout>

@@ -1,0 +1,47 @@
+---
+title: Error Handling
+description: Handling AgentError, GuardrailError, and more
+---
+
+The SDK provides a structured error hierarchy for granular error handling.
+
+## Error Hierarchy
+
+```text
+AgentError (base)
+├── GuardrailError       — A guardrail rejected the input or output
+├── ToolExecutionError   — A tool failed during execution
+├── ProviderError        — All providers in the fallback chain failed
+└── BudgetExceededError  — The agent exceeded maxSteps
+```
+
+## Catching Specific Errors
+
+You can catch specific errors by checking `instanceof` the corresponding error class.
+
+```typescript
+import {
+  GuardrailError,
+  ToolExecutionError,
+  ProviderError,
+  BudgetExceededError,
+} from "@rabbit-agent-sdk/rabbit-agent-sdk";
+
+try {
+  const response = await agent.run(userInput);
+  console.log(response);
+} catch (error) {
+  if (error instanceof GuardrailError) {
+    console.log(`Guardrail "${error.guardrailName}" blocked the message.`);
+    // → Guardrail "PIIGuardrail" blocked the message.
+  } else if (error instanceof BudgetExceededError) {
+    console.log("Agent hit the step limit — consider increasing maxSteps.");
+  } else if (error instanceof ProviderError) {
+    console.log("All LLM providers are down. Try again later.");
+  } else if (error instanceof ToolExecutionError) {
+    console.log(`Tool "${error.toolName}" failed.`);
+  } else {
+    throw error; // Re-throw unexpected errors
+  }
+}
+```

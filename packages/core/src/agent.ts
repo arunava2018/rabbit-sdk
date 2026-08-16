@@ -2,8 +2,11 @@ import { Provider, ProviderResponse } from "./provider";
 import { Memory, BufferMemory } from "./memory";
 import { Tool, Message, ToolCall, Guardrails } from "./types";
 import { GuardrailError, BudgetExceededError, ProviderError } from "./errors";
+import { Tracer } from "./tracing";
+import { HandoffError, HandoffResult } from "./handoff";
 
 export interface AgentConfig {
+  name?: string;
   provider: Provider;
   memory?: Memory;
   tools?: Tool[];
@@ -12,9 +15,11 @@ export interface AgentConfig {
   stream?: boolean;
   maxSteps?: number;
   fallbackProviders?: Provider[];
+  tracer?: Tracer;
 }
 
 export class Agent {
+  public name: string;
   private provider: Provider;
   private memory: Memory;
   private tools: Map<string, Tool>;
@@ -23,8 +28,10 @@ export class Agent {
   private stream?: boolean;
   private maxSteps: number;
   private fallbackProviders: Provider[];
+  private tracer?: Tracer;
 
   constructor(config: AgentConfig) {
+    this.name = config.name ?? "Agent";
     this.provider = config.provider;
     this.memory = config.memory ?? new BufferMemory();
     this.guardrails = config.guardrails ?? [];
@@ -32,6 +39,7 @@ export class Agent {
     this.stream = config.stream ?? false;
     this.maxSteps = config.maxSteps ?? 5;
     this.fallbackProviders = config.fallbackProviders ?? [];
+    this.tracer = config.tracer;
     
     this.tools = new Map();
     if (config.tools) {
@@ -44,21 +52,38 @@ export class Agent {
   /**
    * Execute a single prompt string against the agent.
    */
-  public async run(prompt: string): Promise<any> {
-    // 1. Run guardrails on user input
-    for (const guardrail of this.guardrails) {
-      if(guardrail.type !== "input") continue; // Skip output guardrails for input validation
-      const isValid = await guardrail.validate(prompt);
-      if (!isValid) {
-        throw new GuardrailError(guardrail.name, `Guardrail Validation Error: Input rejected by '${guardrail.name}' guardrail.`);
+  public async run(prompt: string): Promise<any | HandoffResult> {
+    const runId = Math.random().toString(36).substring(7);
+    this.tracer?.startRun(runId, this.name, prompt);
+
+    try {
+      // 1. Run guardrails on user input
+      for (const guardrail of this.guardrails) {
+        if(guardrail.type !== "input") continue; // Skip output guardrails for input validation
+        const isValid = await guardrail.validate(prompt);
+        if (!isValid) {
+          throw new GuardrailError(guardrail.name, `Guardrail Validation Error: Input rejected by '${guardrail.name}' guardrail.`);
+        }
       }
+
+      // 2. Add user message to memory
+      const userMessage: Message = { role: "user", content: prompt };
+      await this.memory.addMessage(userMessage);
+      this.tracer?.addEvent({ type: "MemoryWrite", message: userMessage });
+
+      // 3. Start the execution loop (handle tool calls)
+      const result = await this.executionLoop();
+      if (typeof result === "string") {
+        this.tracer?.endRun(result);
+      } else if (result && result.type === "handoff") {
+        this.tracer?.addEvent({ type: "Handoff", targetAgent: result.targetAgent, context: result.context });
+        this.tracer?.endRun(`Handoff to ${result.targetAgent}`);
+      }
+      return result;
+    } catch (error: any) {
+      this.tracer?.addEvent({ type: "Error", error: error.message });
+      throw error;
     }
-
-    // 2. Add user message to memory
-    await this.memory.addMessage({ role: "user", content: prompt });
-
-    // 3. Start the execution loop (handle tool calls)
-    return this.executionLoop();
   }
   /**
    * Main loop that runs the provider and automatically handles tool calls
@@ -87,6 +112,7 @@ export class Agent {
               if (providers.length > 1) {
                 console.log(`[Agent Logs] 📡 Calling provider: '${p.name}'...`);
               }
+              const requestTime = Date.now();
               response = await p.generate({
                 messages,
                 model: p.model,
@@ -94,6 +120,7 @@ export class Agent {
                 systemPrompt: self.systemPrompt,
                 stream: self.stream,
               });
+              self.tracer?.addEvent({ type: "ModelCall", model: p.model });
               break; // Success! Break the fallback loop
             } catch (error: any) {
               console.warn(`[Agent Logs] ⚠️ Provider '${p.name}' failed:`, error.message);
@@ -141,10 +168,18 @@ export class Agent {
             assistantMessage.toolCalls = finalToolCalls;
           }
           await self.memory.addMessage(assistantMessage);
+          self.tracer?.addEvent({ type: "MemoryWrite", message: assistantMessage });
 
           // If tools were called, execute in parallel and loop back
           if (finalToolCalls && finalToolCalls.length > 0) {
-            await self.handleToolCalls(finalToolCalls);
+            try {
+              await self.handleToolCalls(finalToolCalls);
+            } catch (e: any) {
+              if (e instanceof HandoffError) {
+                return e.result;
+              }
+              throw e;
+            }
             continue;
           }
 
@@ -166,6 +201,7 @@ export class Agent {
       stepCount++;
 
       const messages = await this.memory.getMessages();
+      this.tracer?.addEvent({ type: "MemoryRead", messages });
       
       let response: ProviderResponse | AsyncIterable<ProviderResponse> | undefined = undefined;
       let lastError: any = undefined;
@@ -183,6 +219,8 @@ export class Agent {
             systemPrompt: this.systemPrompt,
             stream: this.stream,
           });
+          const resp = response as ProviderResponse;
+          this.tracer?.addEvent({ type: "ModelCall", model: p.model, promptTokens: resp.usage?.promptTokens, completionTokens: resp.usage?.completionTokens });
           break; // Success! Break the fallback loop
         } catch (error: any) {
           console.warn(`[Agent Logs] ⚠️ Provider '${p.name}' failed:`, error.message);
@@ -211,10 +249,18 @@ export class Agent {
 
       // Save response to memory
       await this.memory.addMessage(responseMessage);
+      this.tracer?.addEvent({ type: "MemoryWrite", message: responseMessage });
 
       // Check if tools were called
       if (responseMessage.toolCalls && responseMessage.toolCalls.length > 0) {
-        await this.handleToolCalls(responseMessage.toolCalls);
+        try {
+          await this.handleToolCalls(responseMessage.toolCalls);
+        } catch (e: any) {
+          if (e instanceof HandoffError) {
+            return e.result;
+          }
+          throw e;
+        }
         // Loop back to send tool results to the model
         continue;
       }
@@ -226,6 +272,7 @@ export class Agent {
 
   private async handleToolCalls(toolCalls: ToolCall[]): Promise<void> {
     const toolPromises = toolCalls.map(async (toolCall) => {
+      this.tracer?.addEvent({ type: "ToolCall", toolCall });
       console.log(`\n[Agent Logs] 🛠️  Model requested tool: '${toolCall.name}' with args:`, toolCall.arguments);
       const tool = this.tools.get(toolCall.name);
       
@@ -247,14 +294,20 @@ export class Agent {
         // Execution
         const result = await tool.execute(parsedArgs);
         console.log(`[Agent Logs] ✅ Tool returned:`, result);
+        const resultString = typeof result === "string" ? result : JSON.stringify(result);
         
+        this.tracer?.addEvent({ type: "ToolResult", toolCallId: toolCall.id, result: resultString });
+
         return {
           role: "tool" as const,
-          content: typeof result === "string" ? result : JSON.stringify(result),
+          content: resultString,
           toolCallId: toolCall.id,
           name: toolCall.name,
         };
       } catch (error: any) {
+        if (error instanceof HandoffError) {
+          throw error; // Bubble up to outer handleToolCalls
+        }
         console.error(`[Agent Logs] ❌ Tool execution failed:`, error.message);
         return {
           role: "tool" as const,
@@ -269,6 +322,11 @@ export class Agent {
 
     for (const resultMessage of results) {
       await this.memory.addMessage(resultMessage);
+      this.tracer?.addEvent({ type: "MemoryWrite", message: resultMessage });
     }
+  }
+
+  public getLastTrace() {
+    return this.tracer?.getLastTrace();
   }
 }

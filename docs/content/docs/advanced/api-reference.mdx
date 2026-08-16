@@ -1,0 +1,131 @@
+---
+title: API Reference
+description: Comprehensive API reference for the Rabbit Agent SDK.
+---
+
+# API Reference
+
+This page details the core classes, interfaces, and methods provided by the Rabbit Agent SDK.
+
+## `Agent`
+
+The `Agent` class is the primary orchestrator. It manages the conversational loop, invoking the LLM Provider, running tools, and applying guardrails.
+
+### Constructor
+
+```typescript
+new Agent(options: AgentOptions)
+```
+
+**`AgentOptions`**:
+- `provider` (`Provider`): The primary LLM provider (e.g., `OpenAIProvider`).
+- `fallbackProviders?` (`Provider[]`): An array of backup providers to use if the primary provider fails (e.g., rate limits, 500 errors).
+- `memory?` (`Memory`): The memory implementation to use for storing conversation history. Defaults to `new BufferMemory()`.
+- `tools?` (`Tool[]`): An array of tools the agent can invoke.
+- `guardrails?` (`Guardrails[]`): An array of guardrails to evaluate inputs and outputs.
+- `systemPrompt?` (`string`): Instructions that dictate the agent's persona and behavior.
+- `maxSteps?` (`number`): The maximum number of tool-calling iterations allowed per `run()` call. Defaults to `10`.
+
+### Methods
+
+#### `.run(input: string): Promise<Message>`
+Executes a single conversational turn.
+- **`input`**: The user's prompt.
+- **Returns**: A Promise resolving to a `Message` object containing the agent's final text response.
+
+#### `.stream(input: string): AsyncGenerator<AgentEvent>`
+Executes a conversational turn, but yields events as they happen (e.g., tokens, tool calls).
+- **`input`**: The user's prompt.
+- **Yields**: `AgentEvent` objects (see below).
+
+#### `.addTool(tool: Tool): void`
+Registers a new tool with the agent dynamically.
+
+#### `.addGuardrail(guardrail: Guardrails): void`
+Registers a new guardrail dynamically.
+
+---
+
+## `Tool`
+
+The `Tool` class defines an action the LLM can take, powered by a Zod schema for type safety.
+
+### Constructor
+
+```typescript
+new Tool<T extends z.ZodTypeAny>(options: ToolOptions<T>)
+```
+
+**`ToolOptions<T>`**:
+- `name` (`string`): A unique name for the tool (alphanumeric and underscores only).
+- `description` (`string`): A clear description of what the tool does. The LLM reads this to decide when to use it.
+- `schema` (`T`): A Zod schema defining the expected arguments. Descriptions attached to fields (via `.describe()`) are passed to the LLM.
+- `execute` (`(args: z.infer<T>) => Promise<any>`): The async function that executes the tool logic. The `args` are guaranteed to match your Zod schema at runtime.
+
+---
+
+## `Provider`
+
+An interface that standardizes interactions with various LLM backends.
+
+### Built-in Providers
+The SDK ships with multiple official providers, each requiring their respective API keys in the environment variables:
+- `OpenAIProvider`
+- `GroqProvider`
+- `GeminiProvider`
+- `AnthropicProvider`
+
+### Constructor
+Each provider constructor typically accepts configuration options specific to that provider:
+
+```typescript
+new OpenAIProvider({
+  model?: string; // Defaults to "gpt-4-turbo"
+  temperature?: number;
+  apiKey?: string; // Defaults to process.env.OPENAI_API_KEY
+})
+```
+
+---
+
+## `Memory`
+
+An interface for managing the conversation history passed to the Provider.
+
+### `BufferMemory`
+The default implementation. It stores all messages in a local array.
+
+```typescript
+const memory = new BufferMemory();
+const history = await memory.getMessages();
+await memory.addMessage({ role: "user", content: "Hello" });
+await memory.clear();
+```
+
+---
+
+## Types
+
+### `Message`
+Represents a single message in the conversation history.
+
+```typescript
+interface Message {
+  role: "system" | "user" | "assistant" | "tool";
+  content: string;
+  name?: string; // Used for tool names
+  toolCalls?: ToolCall[];
+}
+```
+
+### `AgentEvent`
+Yielded by the `.stream()` method.
+
+```typescript
+type AgentEvent = 
+  | { type: "text_delta", content: string }
+  | { type: "tool_call_start", toolName: string }
+  | { type: "tool_call_end", toolName: string, result: any }
+  | { type: "guardrail_failed", guardrailName: string, reason: string }
+  | { type: "fallback_triggered", fromProvider: string, toProvider: string };
+```

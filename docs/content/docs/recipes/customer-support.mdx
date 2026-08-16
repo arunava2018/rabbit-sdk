@@ -1,0 +1,137 @@
+---
+title: Customer Support Agent
+description: Build an automated support agent that checks order status and escalates to a human.
+---
+
+# Customer Support Agent
+
+Customer support is one of the most common use-cases for AI agents. In this recipe, we'll build a complete support agent that can:
+
+1. Greet the customer and parse their intent.
+2. Check the status of an order if the customer asks.
+3. Automatically escalate the conversation to a human if the customer is frustrated or asks for human assistance.
+
+## Prerequisites
+
+Let's import the necessary modules from the SDK. We'll use the OpenAI provider for this example.
+
+```typescript
+import { Agent, Tool, BufferMemory, Guardrails } from "@rabbit-agent-sdk/core";
+import { OpenAIProvider } from "@rabbit-agent-sdk/provider-openai";
+import { z } from "zod";
+```
+
+## Defining the Tools
+
+Our agent needs two tools: one to check order status, and one to escalate to a human.
+
+```typescript
+// 1. Tool for checking an order status
+const checkOrderStatus = new Tool({
+  name: "check_order_status",
+  description: "Check the delivery status of a customer order using the order ID.",
+  schema: z.object({
+    orderId: z.string().describe("The alphanumeric order ID provided by the customer."),
+  }),
+  execute: async ({ orderId }) => {
+    // In a real app, this would query your database or Shopify API.
+    console.log(`[System] Checking database for order ${orderId}...`);
+    
+    // Mock response
+    if (orderId.startsWith("ORD")) {
+      return { status: "Shipped", estimatedDelivery: "Tomorrow by 8 PM" };
+    }
+    return { error: "Order not found. Please double-check the ID." };
+  },
+});
+
+// 2. Tool for escalating to a human
+const escalateToHuman = new Tool({
+  name: "escalate_to_human",
+  description: "Escalate the conversation to a real human support agent.",
+  schema: z.object({
+    reason: z.string().describe("The reason why this needs human escalation."),
+    urgency: z.enum(["low", "medium", "high"]).default("medium"),
+  }),
+  execute: async ({ reason, urgency }) => {
+    console.log(`[System] 🚨 Escalating to human. Reason: ${reason} (Urgency: ${urgency})`);
+    
+    // In a real app, this would trigger an event in Intercom or Zendesk.
+    return { 
+      status: "escalated", 
+      message: "I have transferred you to our human support team. They will be with you shortly." 
+    };
+  },
+});
+```
+
+## Defining Guardrails
+
+We want to make sure our agent remains professional, even if the customer is frustrated. Let's add a post-execution guardrail to enforce a polite tone.
+
+```typescript
+const politeToneGuardrail: Guardrails = {
+  name: "polite-tone",
+  description: "Ensures the agent remains professional and polite.",
+  type: "output", // Runs on the LLM's generated response
+  validate: async (output) => {
+    const forbiddenWords = ["stupid", "idiot", "annoying"];
+    const text = typeof output === "string" ? output.toLowerCase() : "";
+    
+    for (const word of forbiddenWords) {
+      if (text.includes(word)) {
+        console.log(`[Guardrail] Blocked unprofessional word: ${word}`);
+        return false; // Fails the guardrail validation
+      }
+    }
+    return true; // Passes validation
+  }
+};
+```
+
+## Creating the Agent
+
+Now we assemble the pieces. We'll give the agent a system prompt that clearly defines its persona and boundaries.
+
+```typescript
+const supportAgent = new Agent({
+  provider: new OpenAIProvider({ model: "gpt-4-turbo" }),
+  memory: new BufferMemory(),
+  tools: [checkOrderStatus, escalateToHuman],
+  guardrails: [politeToneGuardrail],
+  systemPrompt: `You are 'Rabbit Support', a helpful customer service AI.
+  Your job is to help users with their orders.
+  - If they ask about an order, ALWAYS ask for their Order ID first.
+  - If they are angry or explicitly ask for a human, use the escalate_to_human tool immediately.
+  - Always be polite and concise.`,
+});
+```
+
+## The Agent Loop
+
+Let's simulate a conversation with a customer!
+
+```typescript
+async function run() {
+  console.log("Customer: Where is my package?");
+  let reply = await supportAgent.run("Where is my package?");
+  console.log("Agent:", reply.content);
+  // Output: "I can help you with that! Could you please provide your Order ID?"
+
+  console.log("\nCustomer: It's ORD-12345");
+  reply = await supportAgent.run("It's ORD-12345");
+  console.log("Agent:", reply.content);
+  // Output: "Your order (ORD-12345) has shipped! The estimated delivery is Tomorrow by 8 PM."
+
+  console.log("\nCustomer: This is taking too long, let me talk to a human.");
+  reply = await supportAgent.run("This is taking too long, let me talk to a human.");
+  console.log("Agent:", reply.content);
+  // Output: "I understand. I have transferred you to our human support team. They will be with you shortly."
+}
+
+run();
+```
+
+## Key Takeaways
+- The LLM automatically knows to ask for the `orderId` because it read the Zod schema description.
+- By defining `escalate_to_human` as a tool, the LLM has agency to gracefully exit the conversation loop and hand off control back to your application code.

@@ -1,0 +1,109 @@
+---
+title: Data Extraction Agent
+description: Build an agent that scrapes websites and outputs structured JSON data.
+---
+
+# Data Extraction Agent
+
+A powerful use case for LLMs is turning unstructured web content into structured data. In this recipe, we'll build an agent that uses the built-in `FetchTool` to read a webpage and extracts specific data into a strictly typed JSON object using Zod.
+
+## Prerequisites
+
+We'll use the `GroqProvider` for this example because Groq's inference speeds are incredibly fast, making it ideal for high-volume data extraction tasks.
+
+```bash
+npm i @rabbit-agent-sdk/core @rabbit-agent-sdk/provider-groq zod
+```
+
+## The Goal
+
+We want to give our agent a URL of a blog post or news article and have it return a strictly formatted JSON object containing:
+- The article title
+- The author's name
+- A 2-sentence summary
+- A list of key topics
+
+## Setup
+
+First, import the SDK and initialize the agent with the `FetchTool`.
+
+```typescript
+import { Agent, FetchTool } from "@rabbit-agent-sdk/core";
+import { GroqProvider } from "@rabbit-agent-sdk/provider-groq";
+import { z } from "zod";
+
+// The FetchTool allows the agent to make HTTP GET requests
+// to read the contents of a webpage.
+const fetchTool = new FetchTool();
+
+const extractionAgent = new Agent({
+  provider: new GroqProvider({ model: "llama3-70b-8192" }),
+  tools: [fetchTool],
+  systemPrompt: `You are an expert data extractor.
+  When given a URL, use the fetch tool to read the webpage.
+  Then, extract the requested information.`,
+});
+```
+
+## Defining the Output Schema
+
+Instead of relying on the LLM to hopefully format its text as JSON, we can use a trick: **Force the LLM to call a "Save Data" tool**. 
+
+We define a tool that expects the exact structured data we want. The agent is instructed that its final action must be calling this tool.
+
+```typescript
+// Define the shape of the data we want to extract
+const ArticleDataSchema = z.object({
+  title: z.string(),
+  author: z.string().nullable().describe("The author's name, or null if not found"),
+  summary: z.string().describe("A concise 2-sentence summary of the article"),
+  topics: z.array(z.string()).describe("3-5 key topics discussed in the article"),
+});
+
+// A variable to store our extracted data
+let extractedData = null;
+
+// The extraction tool
+const saveExtractionTool = new Tool({
+  name: "save_extracted_data",
+  description: "Call this tool to save the final extracted article data.",
+  schema: ArticleDataSchema,
+  execute: async (data) => {
+    // Save the data to our local variable (or a database!)
+    extractedData = data;
+    return { success: true, message: "Data saved successfully." };
+  }
+});
+
+// Add it to our agent
+extractionAgent.addTool(saveExtractionTool);
+```
+
+## The Extraction Loop
+
+Now, let's run the agent on a target URL. We explicitly instruct it to use the `save_extracted_data` tool when it's finished.
+
+```typescript
+async function runExtraction() {
+  const targetUrl = "https://example-blog.com/the-future-of-ai-agents";
+  
+  console.log(`Starting extraction for: ${targetUrl}...`);
+  
+  const response = await extractionAgent.run(
+    `Read the following URL: ${targetUrl}. 
+    Analyze the text, and then call the save_extracted_data tool with the results.`
+  );
+  
+  console.log("Agent finished its task.");
+  
+  // Our structured, validated JSON data!
+  console.log("Extracted Data:", JSON.stringify(extractedData, null, 2));
+}
+
+runExtraction();
+```
+
+## Why this approach?
+By forcing the LLM to pass the data as arguments to a Zod-validated tool:
+1. **Type Safety**: The SDK validates the data against your Zod schema at runtime. If the LLM misses a field, the SDK automatically sends an error back to the LLM, prompting it to correct the JSON and try again.
+2. **Predictability**: You never have to regex-parse a string to find a JSON block hidden inside conversational text.

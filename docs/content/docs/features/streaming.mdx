@@ -1,0 +1,31 @@
+---
+title: Streaming
+description: Enabling token-by-token streaming in Rabbit SDK
+---
+
+Enable streaming to receive response tokens as they're generated instead of waiting for the full response. This is essential for building responsive UIs and chat applications.
+
+## How to Enable Streaming
+
+To enable streaming, pass `stream: true` to the Agent configuration. The `agent.run()` method will then return an `AsyncGenerator<string>` instead of a plain `string`.
+
+```typescript
+import { Agent, OpenAIProvider } from "@rabbit-agent-sdk/rabbit-agent-sdk";
+
+const agent = new Agent({
+  provider: new OpenAIProvider(),
+  stream: true,  // ← Enable streaming
+});
+
+const stream = await agent.run("Write a short poem about TypeScript.");
+
+// stream is an AsyncGenerator<string>
+for await (const chunk of stream) {
+  process.stdout.write(chunk);
+}
+console.log(); // Newline after stream completes
+```
+
+<Callout type="warning">
+**Note:** Output guardrails still run on the full accumulated response after the stream completes. If validation fails, a `GuardrailError` is thrown at the end of the stream.
+</Callout>

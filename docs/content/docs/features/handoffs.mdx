@@ -1,0 +1,46 @@
+---
+title: Agent Handoffs
+description: Gracefully delegate tasks between agents
+---
+
+Agents can gracefully delegate tasks to other specialized agents. This is useful when you want to build a "Swarm" or a team of agents where each has a specific role (e.g., Triage Agent, Support Agent, Billing Agent).
+
+## Handoff Mechanism
+
+The Rabbit SDK uses the `HandoffResult` pattern to ensure graceful handoffs without risking infinite execution loops. 
+
+Instead of an agent directly executing another agent (which can cause deep recursion and stack overflows), the agent throws an internal `HandoffError` via a tool, which breaks the loop. The `agent.run()` method catches this error and returns a structured `HandoffResult` object to you.
+
+### Example
+
+1. Create a handoff tool using `createHandoffTool`.
+2. The agent's `run()` method will return a `HandoffResult` when the tool is called.
+3. Your application can then seamlessly start the next agent.
+
+```typescript
+import { Agent, OpenAIProvider, createHandoffTool } from "@rabbit-agent-sdk/rabbit-agent-sdk";
+
+// 1. Create the handoff tool
+const handoffToSupport = createHandoffTool(
+  "SupportAgent",
+  "Use this to handoff to the support agent for billing issues."
+);
+
+// 2. Give the tool to the primary agent
+const agent = new Agent({
+  provider: new OpenAIProvider(),
+  tools: [handoffToSupport],
+});
+
+// 3. Execute
+const result = await agent.run("I have a problem with my bill.");
+
+// 4. Handle the Handoff Result
+if (typeof result !== "string" && result.type === "handoff") {
+  console.log(`Agent handed off to: ${result.targetAgent}`);
+  console.log(`Context passed: ${result.context}`);
+  
+  // Here you can invoke the next agent:
+  // await supportAgent.run(result.context);
+}
+```

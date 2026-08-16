@@ -1,0 +1,61 @@
+---
+title: Built-in Tools
+description: Pre-built tools available in Rabbit SDK
+---
+
+The SDK includes several pre-built tools ready to use out of the box.
+
+## FetchTool
+
+Makes HTTP requests to REST APIs. The LLM can call this to fetch data from any URL.
+
+```typescript
+import { Agent, OpenAIProvider, FetchTool } from "@rabbit-agent-sdk/rabbit-agent-sdk";
+
+const fetchTool = new FetchTool();
+
+const agent = new Agent({
+  provider: new OpenAIProvider(),
+  tools: [fetchTool],
+  systemPrompt: "You can fetch data from APIs. Use the FetchTool when asked.",
+});
+
+await agent.run("Fetch the latest posts from https://jsonplaceholder.typicode.com/posts?_limit=3");
+```
+
+**FetchTool Schema:**
+
+| Parameter | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `url` | `string` (URL) | Yes | The URL to fetch |
+| `method` | `"GET", "POST", "PUT", "DELETE"` | No | HTTP method (default: GET) |
+| `headers` | `Record<string, string>` | No | HTTP headers as key-value pairs |
+| `body` | `string` | No | Request body (for POST/PUT) |
+
+## WebSearchTool
+
+Searches the web using the [Tavily API](https://tavily.com/). Falls back to a mock response if no API key is provided.
+
+```typescript
+import { Agent, OpenAIProvider, WebSearchTool } from "@rabbit-agent-sdk/rabbit-agent-sdk";
+
+// With a real API key
+const searchTool = new WebSearchTool(process.env.TAVILY_API_KEY);
+
+// Without an API key (returns mock results)
+const mockSearchTool = new WebSearchTool();
+
+const agent = new Agent({
+  provider: new OpenAIProvider(),
+  tools: [searchTool],
+  systemPrompt: "Search the web when asked about current events.",
+});
+
+await agent.run("What are the latest developments in AI?");
+```
+
+**WebSearchTool Schema:**
+
+| Parameter | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `query` | `string` | Yes | The search query |
