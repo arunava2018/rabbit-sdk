@@ -238,3 +238,14 @@ code[data-line-numbers] > [data-line]::before {
 .prose :where(code):not(:where([class~="not-prose"] *)):not([data-language])::after {
   content: none;
 }
+
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(calc(-50% - 1rem)); }
+}
+.animate-marquee {
+  animation: marquee 30s linear infinite;
+}
+.animate-marquee:hover {
+  animation-play-state: paused;
+}

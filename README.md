@@ -1,5 +1,8 @@
 <p align="center">
-  <h1 align="center">🐇 Rabbit SDK</h1>
+  <img src="./logo.jpg" alt="Rabbit SDK Logo" width="180" style="border-radius: 12px; margin-bottom: 20px;" />
+</p>
+<p align="center">
+  <h1 align="center">Rabbit SDK</h1>
   <p align="center">
     A type-safe, provider-agnostic framework for building production-grade AI agents in TypeScript.
     <br />

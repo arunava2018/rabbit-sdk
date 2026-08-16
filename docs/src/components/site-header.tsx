@@ -29,8 +29,11 @@ export async function SiteHeader() {
         </div>
 
         {/* Brand */}
-        <Link href="/" className="flex items-center gap-2 font-bold text-sm shrink-0">
-          <span className="text-foreground">🐇 Rabbit SDK</span>
+        <Link href="/" className="flex items-center gap-2.5 font-bold text-sm shrink-0 group">
+          <div className="w-8 h-8 rounded-lg shadow-sm group-hover:scale-105 transition-transform overflow-hidden border border-border">
+            <img src="/logo.jpg" alt="Rabbit SDK Logo" className="w-full h-full object-cover" />
+          </div>
+          <span className="text-foreground tracking-tight">Rabbit SDK</span>
         </Link>
 
         {/* Main nav */}
