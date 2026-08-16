@@ -173,7 +173,7 @@ export const components = {
             )}
           </div>
           
-          <CopyButton value={rawCode} />
+          <CopyButton text={rawCode} />
         </div>
         
         {/* Code content */}
